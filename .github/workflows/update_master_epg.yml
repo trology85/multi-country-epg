@@ -27,10 +27,7 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         run: |
-          # Firebase'e hangi projeye yükleyeceğini söylememiz lazım
-          firebase use logo-manager-foundation --token "${{ secrets.FIREBASE_TOKEN }}"
-          # Dosyaları (EPG ve logoları) fırlatıyoruz
-          firebase deploy --only hosting --token "${{ secrets.FIREBASE_TOKEN }}" -m "GitHub Action EPG Update"
+          npx firebase-tools deploy --only hosting --project logo-manager-foundation --token "${{ secrets.FIREBASE_TOKEN }}" -m "GitHub Action EPG Update"
 
       - name: Commit and push changes to GitHub (Opsiyonel)
         run: |
