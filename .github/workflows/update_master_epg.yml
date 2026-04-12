@@ -23,7 +23,7 @@ jobs:
           npm install -g firebase-tools
 
       - name: Run Master Scraper
-        run: python master_scraper.py # Dosya yolun scripts/ içindeyse 'python scripts/master_scraper.py' yap
+        run: python scripts/master_scraper.py # Dosya yolun scripts/ içindeyse 'python scripts/master_scraper.py' yap
 
       - name: Deploy to Firebase Hosting
         run: |
