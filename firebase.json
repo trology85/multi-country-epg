@@ -5,8 +5,13 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "scripts/**",
-      ".github/**"
+      "scripts/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
   }
 }
