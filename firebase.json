@@ -1,1 +1,13 @@
-
+{
+  "hosting": {
+    "public": "epg",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "main.py",
+      "requirements.txt",
+      "scripts/**",
+      ".github/**"
+    ]
+  }
+}
