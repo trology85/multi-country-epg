@@ -5,6 +5,9 @@ on:
     - cron: '0 3 * * *' # Her gece TR saatiyle 06:00
   workflow_dispatch: # Manuel çalıştırma butonu
 
+permissions:
+  contents: write # Dosyayı commit edip push yapabilmek için gerekli
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,20 +22,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests
-          npm install -g firebase-tools
+          pip install requests beautifulsoup4 urllib3 lxml
 
       - name: Run Master Scraper
         run: python scripts/master_scraper.py
 
-      - name: Deploy to Firebase Hosting
-        run: |
-          npx firebase-tools deploy --only hosting --project epg-server-auto --token "${{ secrets.FIREBASE_TOKEN }}" -m "GitHub Action EPG Update"
-
-      - name: Commit and push changes to GitHub
+      - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add epg/*
-          git commit -m "Master EPG updated" || exit 0
+          git commit -m "Master EPG updated: $(date +'%Y-%m-%d %H:%M')" || exit 0
           git push
