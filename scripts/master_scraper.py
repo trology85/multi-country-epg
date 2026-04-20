@@ -1,6 +1,8 @@
 import requests
 import gzip
 import xml.etree.ElementTree as ET
+import re
+from bs4 import BeautifulSoup
 import io
 import os
 from datetime import datetime, timedelta
@@ -18,7 +20,7 @@ SOURCES = {
 WANTED_CHANNELS = {
     "RTL.de": "RTL", "ProSieben.de": "Pro7", "SAT.1.de": "SAT 1", "VOX.de": "Vox", "ZDF.de": "ZDF",
     "TF1.fr": "TF1", "M6.fr": "M6", "France2.fr": "France.2", "CanalPlus.fr": "Canal.Plus", "RTL.9.fr": "RTL 9",
-    "ERT1.gr": "ERT1", "Mega.gr": "Mega", "Ant1.gr": "ANT1.gr", "Skai.gr": "Skai"
+    "ERT1.gr": "ERT1", "Mega.gr": "Mega", "Ant1.gr": "ANT1", "Skai.gr": "Skai"
 }
 
 # --- YENI KAYNAK KANALLARI (Tivibu & Tivi6) ---
@@ -99,12 +101,119 @@ def fetch_tivibu_spor(master_root):
         print("✅ Tivibu ve TİVİ6 başarıyla eklendi.")
     except Exception as e:
         print(f"⚠️ Tivibu/TİVİ6 hatası: {e}")
+        
+def fetch_idman_tv(master_root):
+    url = "https://idmantv.az/az/program"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    chan_id = "Idman.TV"
+
+    print("🇦 İdman TV verisi çekiliyor...")
+
+    try:
+        resp = requests.get(url, headers=headers, verify=False, timeout=20)
+        if resp.status_code != 200:
+            print(f"⚠️ İdman TV HTTP hatası: {resp.status_code}")
+            return
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        day_cards = soup.find_all("div", class_="day-card")
+
+        if not day_cards:
+            print("⚠️ İdman TV day-card bulunamadı.")
+            return
+
+        parsed_items = []
+
+        for card in day_cards:
+            title_el = card.find("h3", class_="day-title")
+            notes_el = card.find("div", class_="day-notes")
+
+            if not title_el or not notes_el:
+                continue
+
+            title_text = title_el.get_text(" ", strip=True)
+            date_match = re.search(r"(\d{2}\.\d{2}\.\d{4})", title_text)
+            if not date_match:
+                continue
+
+            base_date = datetime.strptime(date_match.group(1), "%d.%m.%Y")
+
+            p_el = notes_el.find("p")
+            if not p_el:
+                continue
+
+            for br in p_el.find_all("br"):
+                br.replace_with("\n")
+
+            raw_text = p_el.get_text("\n", strip=True)
+            lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
+
+            current_day = base_date
+            prev_minutes = None
+
+            for line in lines:
+                m = re.match(r"^(\d{2}):(\d{2})\s+(.+)$", line)
+                if not m:
+                    continue
+
+                hh = int(m.group(1))
+                mm = int(m.group(2))
+                title = m.group(3).strip()
+
+                total_minutes = hh * 60 + mm
+
+                # Saat geri sardıysa ertesi güne geç
+                if prev_minutes is not None and total_minutes < prev_minutes:
+                    current_day += timedelta(days=1)
+
+                # Önce Azerbaycan saatiyle oluştur
+                source_dt = current_day.replace(hour=hh, minute=mm, second=0, microsecond=0)
+
+                # Türkiye saati için 1 saat geri al
+                turkey_dt = source_dt - timedelta(hours=1)
+
+                parsed_items.append((turkey_dt, title))
+                prev_minutes = total_minutes
+
+        if not parsed_items:
+            print("⚠️ İdman TV için programme üretilemedi.")
+            return
+
+        parsed_items.sort(key=lambda x: x[0])
+
+        c_elem = ET.SubElement(master_root, "channel", id=chan_id)
+        ET.SubElement(c_elem, "display-name").text = "İdman TV"
+        ET.SubElement(c_elem, "display-name").text = "Idman TV"
+
+        for i, (start_dt, title) in enumerate(parsed_items):
+            if i + 1 < len(parsed_items):
+                stop_dt = parsed_items[i + 1][0]
+            else:
+                stop_dt = start_dt + timedelta(hours=1)
+
+            start = start_dt.strftime("%Y%m%d%H%M%S") + "+0300"
+            stop = stop_dt.strftime("%Y%m%d%H%M%S") + "+0300"
+
+            p_elem = ET.SubElement(
+                master_root,
+                "programme",
+                start=start,
+                stop=stop,
+                channel=chan_id
+            )
+            ET.SubElement(p_elem, "title", lang="tr").text = title
+
+        print(f"✅ İdman TV başarıyla eklendi. ({len(parsed_items)} programme)")
+
+    except Exception as e:
+        print(f"⚠️ İdman TV hatası: {e}")
 
 def create_master():
     master_root = ET.Element("tv", {"generator-info-name": "Weekly Master Scraper"})
 
     # 1. Türksat
     fetch_turksat_weekly(master_root)
+    fetch_idman_tv(master_root)
 
     # 2. Yabancılar
     for country, url in SOURCES.items():
