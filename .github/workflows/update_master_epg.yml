@@ -3,14 +3,15 @@ name: Update Master EPG
 on:
   schedule:
     - cron: '0 3 * * *' # Her gece TR saatiyle 06:00
-  workflow_dispatch: # Manuel çalıştırma butonu
+  workflow_dispatch:
 
 permissions:
-  contents: write # Dosyayı commit edip push yapabilmek için gerekli
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -22,7 +23,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 urllib3 lxml
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 urllib3 lxml playwright
+
+      - name: Install Playwright Chromium
+        run: |
+          python -m playwright install --with-deps chromium
 
       - name: Run Master Scraper
         run: python scripts/master_scraper.py
