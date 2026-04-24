@@ -431,13 +431,10 @@ def fetch_azerbaijan_weekly_channel(master_root, *, url, chan_id, display_names,
                 continue
 
             for br in p_el.find_all("br"):
-                br.replace_with("
-")
+                br.replace_with("\n")
 
-            raw_text = p_el.get_text("
-", strip=True)
-            lines = [line.strip() for line in raw_text.split("
-") if line.strip()]
+            raw_text = p_el.get_text("\n", strip=True)
+            lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
 
             current_day = base_date
             prev_minutes = None
